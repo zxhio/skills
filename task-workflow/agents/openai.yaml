@@ -1,0 +1,4 @@
+interface:
+  display_name: "Task Workflow"
+  short_description: "Plan, execute, review, and track repository tasks"
+  default_prompt: "Use $task-workflow to plan this goal into a task brief without implementing it."
