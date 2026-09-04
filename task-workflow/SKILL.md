@@ -25,26 +25,25 @@ description: "Lead repository work through a persistent task brief with separate
 
 ## 规范
 
-执行、继续、执行并提交，或同一轮从规划转入执行前，完整读取主仓库根的 `AGENTS.md`，再按其指向读取本次范围文档。brief 只提供目标和任务，不替代仓库规范。规划开始时同样先读 `AGENTS.md`。
+执行、继续、执行并提交，或同一轮从规划转入执行前，完整读取主仓库根的 `AGENTS.md`，再按其指向读取本次范围文档。brief 提供目标和任务；实现以 `AGENTS.md` 及其指向文档为准。规划开始时同样先读 `AGENTS.md`。
 
 委派 builder 时，把其文件范围对应的 `AGENTS.md` 约束写进任务说明，并要求先读这些文档再改代码。
 
 ## Brief 位置
 
-始终写主 checkout 的 `.workflow/local/`，不写 linked worktree。用 `git rev-parse --git-common-dir` 的父目录作为主仓库根。该目录被 Git 忽略时仍正常读写，不提交。
-
-路径：
+brief 写在：
 
 ```text
-.workflow/local/<line>/<topic>/<YYYYMMDD>-<goal-slug>.md
+~/.workflow/<repo>/<line>/<topic>/<YYYYMMDD>-<goal-slug>.md
 ```
 
-- **Line**：合入线，`main` / `dev/<ver>` / `release/<ver>`。当前分支是合入线时用它；否则用该工作分支所基于的合入线。无法判断时询问，不要用功能分支当 line。
-- **Topic**：完整功能分支路径，如 `feat/members`。已在合入线上工作时省略 topic。
+- **Repo**：主 checkout 目录名。用 `git rev-parse --git-common-dir` 的父目录确定；撞名时用 origin 路径。
+- **Line**：合入线，`main` / `dev/<ver>` / `release/<ver>`。当前分支是合入线时用它；否则用该工作分支所基于的合入线。无法判断时询问用户确认合入线。
+- **Topic**：完整功能分支路径，如 `feat/example`。已在合入线上工作时省略 topic。
 
-示例：`.workflow/local/dev/v0.0.1/feat/members/20260904-members.md`
+示例：`~/.workflow/example-repo/dev/v0.0.1/feat/example/20260904-example.md`
 
-查找时只扫主仓库根的 `.workflow/local/`。优先级：用户给出的路径、与目标匹配的 brief、当前 `<line>/<topic>/` 下唯一未完成 brief。多个候选时请用户选择。执行没有可匹配 brief 时先创建；用户未授权执行则停在规划。
+查找只扫 `~/.workflow/<repo>/`。优先级：用户给出的路径、与目标匹配的 brief、当前 `<line>/<topic>/` 下唯一未完成 brief。多个候选时请用户选择。执行没有可匹配 brief 时先创建；用户未授权执行则停在规划。
 
 ## 规划
 
@@ -122,7 +121,6 @@ Completion:
 2. 执行仓库规定的提交前检查，并复核最终 diff 和提交范围。
 3. 保留用户已有及无关变更，不把它们混入提交。
 4. 创建与完成目标对应的 Git 提交，并在交付中报告 commit。
-5. 不把 `.workflow/local/` 纳入提交。
 
 ## 交付
 
