@@ -23,30 +23,40 @@ description: "Lead repository work through a persistent task brief with separate
 - 用户没有明确要求提交时，在 review 完成后交付结果，保留工作区变更。
 - 用户同时要求规划和执行时，可以在同一轮先完成 brief，再进入执行。
 
-## 定位 task brief
+## 规范
 
-1. 读取当前仓库指令和工作区状态。
-2. 获取当前 Git 分支，并优先搜索 `.workflow/local/<branch>/`；遵循仓库已有的分支目录和文件命名方式。
-3. 按以下优先级选择 brief：用户给出的路径、与目标名称匹配的 brief、当前分支下唯一未完成的 brief。
-4. 多个未完成 brief 都可能匹配时，列出候选并请用户选择。
-5. 执行动作没有可匹配的 brief 时，先创建 brief；若用户未同时授权执行，停在规划结果。
+执行、继续、执行并提交，或同一轮从规划转入执行前，完整读取主仓库根的 `AGENTS.md`，再按其指向读取本次范围文档。brief 只提供目标和任务，不替代仓库规范。规划开始时同样先读 `AGENTS.md`。
 
-`.workflow/local/` 被 Git 忽略时仍正常读写；brief 是本地工作状态，不因忽略提交而改换位置。
+委派 builder 时，把其文件范围对应的 `AGENTS.md` 约束写进任务说明，并要求先读这些文档再改代码。
+
+## Brief 位置
+
+始终写主 checkout 的 `.workflow/local/`，不写 linked worktree。用 `git rev-parse --git-common-dir` 的父目录作为主仓库根。该目录被 Git 忽略时仍正常读写，不提交。
+
+路径：
+
+```text
+.workflow/local/<line>/<topic>/<YYYYMMDD>-<goal-slug>.md
+```
+
+- **Line**：合入线，`main` / `dev/<ver>` / `release/<ver>`。当前分支是合入线时用它；否则用该工作分支所基于的合入线。无法判断时询问，不要用功能分支当 line。
+- **Topic**：完整功能分支路径，如 `feat/members`。已在合入线上工作时省略 topic。
+
+示例：`.workflow/local/dev/v0.0.1/feat/members/20260904-members.md`
+
+查找时只扫主仓库根的 `.workflow/local/`。优先级：用户给出的路径、与目标匹配的 brief、当前 `<line>/<topic>/` 下唯一未完成 brief。多个候选时请用户选择。执行没有可匹配 brief 时先创建；用户未授权执行则停在规划。
 
 ## 规划
 
-先检查与目标相关的代码、配置、文档、脚本和现有约定，再编写 brief。使用仓库现有格式；新 brief 默认放在：
-
-```text
-.workflow/local/<branch>/<YYYYMMDD>-<goal-slug>.md
-```
+先检查与目标相关的代码、配置、文档、脚本和现有约定，再编写 brief。规划阶段只修改 brief。
 
 brief 至少包含：
 
 ```markdown
 # <Goal title>
 
-- Branch: `<branch>`
+- Branch: `<working-branch>`
+- Line: `<line>`
 - Task: `<task-id>`
 - Status: Planned
 
@@ -82,7 +92,6 @@ Completion:
 - 按可独立实现和验收的责任边界拆分 task，不为简单目标制造额外层级。
 - 每个 task 写清责任、依赖和完成条件；把跨任务整体验收作为独立 task 或最终 review。
 - brief 记录目标、约束、决定和结果，不记录中间推理或临时探索过程。
-- 规划阶段只修改 brief，不实现产品代码、配置或正式文档。
 
 ## 执行
 
@@ -113,6 +122,7 @@ Completion:
 2. 执行仓库规定的提交前检查，并复核最终 diff 和提交范围。
 3. 保留用户已有及无关变更，不把它们混入提交。
 4. 创建与完成目标对应的 Git 提交，并在交付中报告 commit。
+5. 不把 `.workflow/local/` 纳入提交。
 
 ## 交付
 
