@@ -2,10 +2,8 @@
 
 Agent skills used to extend coding-agent workflows.
 
-## task-workflow
+## gitlab-repo-workflow
 
-Lead repository work through a persistent task brief, with separate planning, execution, continuation, review, and optional commit phases.
+Drive GitLab repository tasks end to end: plan the goal, create or resume a task worktree, execute and review code, commit, push, create a merge request via glab or the GitLab API, and release the worktree after merge. Only for repositories whose origin is GitLab.
 
-Trigger phrases include: 规划这个目标, 执行这个目标, 继续这个目标, 执行并提交这个目标.
-
-See [task-workflow/SKILL.md](task-workflow/SKILL.md).
+See [gitlab-repo-workflow/SKILL.md](gitlab-repo-workflow/SKILL.md).

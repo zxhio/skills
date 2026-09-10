@@ -1,0 +1,4 @@
+interface:
+  display_name: "GitLab Repo Workflow"
+  short_description: "Plan, execute, review, and deliver Git changes end to end"
+  default_prompt: "Use $gitlab-repo-workflow to plan and drive this GitLab repository task, delivering through Git as planned."
