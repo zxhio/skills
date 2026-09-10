@@ -26,7 +26,7 @@ description: "Drive GitLab repository tasks end to end: plan the goal, pick a si
 
 ## 3. Checkout
 
-按 [`references/workspace.md`](references/workspace.md) 从主 checkout 启动或恢复需求 worktree，并使用返回的 path 执行后续命令。代码编辑、构建、测试、review 和提交都在需求 worktree 中完成。
+按 [`references/workspace.md`](references/workspace.md) 的路由从主 checkout 启动、挂载或恢复需求 worktree，并使用返回的 path 执行后续命令。代码编辑、构建、测试、review 和提交都在需求 worktree 中完成。
 
 ## 4. 执行计划
 

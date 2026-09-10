@@ -121,6 +121,23 @@ def emit(value: dict[str, object], as_json: bool) -> None:
             print(f"{key}: {item}")
 
 
+def allocate_slot(args: argparse.Namespace, repo: Path) -> tuple[str, Path, str | None]:
+    root = worktree_root(repo, args.root)
+    root.mkdir(parents=True, exist_ok=True)
+    registered = worktrees(repo)
+    slot = args.slot or next_slot(root, registered)
+    path = (root / slot).resolve()
+
+    current = registered.get(path, "__missing__")
+    if current == "__missing__" and path.exists() and any(path.iterdir()):
+        raise WorkspaceError(f"slot directory is not empty and is not a worktree: {path}")
+    if current not in ("__missing__", None):
+        raise WorkspaceError(f"slot is occupied by {current}: {path}")
+    if path.exists() and not clean(path):
+        raise WorkspaceError(f"slot has uncommitted or untracked files: {path}")
+    return slot, path, current
+
+
 def start(args: argparse.Namespace) -> None:
     repo = repo_root()
     validate_topic(args.branch)
@@ -131,22 +148,13 @@ def start(args: argparse.Namespace) -> None:
     if args.base and args.base.removeprefix(f"{remote}/") == current_branch:
         raise WorkspaceError("base cannot be the current task branch; choose a dev/vX.Y.Z branch")
     base_sha = run("git", "rev-parse", base, cwd=repo)
-    root = worktree_root(repo, args.root)
-    root.mkdir(parents=True, exist_ok=True)
-    registered = worktrees(repo)
-    slot = args.slot or next_slot(root, registered)
-    path = (root / slot).resolve()
 
     if ref_exists(repo, f"refs/heads/{args.branch}"):
-        raise WorkspaceError(f"local branch already exists: {args.branch}")
+        raise WorkspaceError(f"local branch already exists: {args.branch}; use attach for existing branches")
+    if ref_exists(repo, f"refs/remotes/{remote}/{args.branch}"):
+        raise WorkspaceError(f"remote branch already exists: {remote}/{args.branch}; use attach for existing branches")
 
-    current = registered.get(path, "__missing__")
-    if current == "__missing__" and path.exists() and any(path.iterdir()):
-        raise WorkspaceError(f"slot directory is not empty and is not a worktree: {path}")
-    if current not in ("__missing__", None):
-        raise WorkspaceError(f"slot is occupied by {current}: {path}")
-    if path.exists() and not clean(path):
-        raise WorkspaceError(f"slot has uncommitted or untracked files: {path}")
+    slot, path, current = allocate_slot(args, repo)
 
     if current is None:
         run("git", "switch", "--detach", base, cwd=path)
@@ -162,6 +170,73 @@ def start(args: argparse.Namespace) -> None:
             "base_sha": base_sha,
             "path": str(path),
             "slot": slot,
+        },
+        args.json,
+    )
+
+
+def attach(args: argparse.Namespace) -> None:
+    repo = repo_root()
+    validate_topic(args.branch)
+    remote = args.remote
+    run("git", "fetch", remote, "--prune", cwd=repo)
+
+    local_exists = ref_exists(repo, f"refs/heads/{args.branch}")
+    remote_exists = ref_exists(repo, f"refs/remotes/{remote}/{args.branch}")
+    if not local_exists and not remote_exists:
+        raise WorkspaceError(
+            f"branch does not exist locally or on {remote}: {args.branch}; use start for new tasks"
+        )
+
+    registered = worktrees(repo)
+    if local_exists and args.branch in registered.values():
+        raise WorkspaceError(f"branch is already checked out in a worktree: {args.branch}")
+
+    sync = "local-only"
+    if local_exists and remote_exists:
+        counts = run(
+            "git", "rev-list", "--left-right", "--count",
+            f"{args.branch}...{remote}/{args.branch}", cwd=repo,
+        ).split()
+        ahead, behind = int(counts[0]), int(counts[1])
+        if ahead and behind:
+            sync = f"diverged (ahead {ahead}, behind {behind})"
+        elif ahead:
+            sync = f"ahead {ahead}"
+        elif behind:
+            sync = f"behind {behind}"
+        else:
+            sync = "up-to-date"
+    elif remote_exists:
+        sync = "remote-only"
+
+    base = args.base or latest_dev(repo, remote)
+    branch_ref = args.branch if local_exists else f"{remote}/{args.branch}"
+    base_sha = run("git", "merge-base", base, branch_ref, cwd=repo)
+
+    slot, path, current = allocate_slot(args, repo)
+
+    if current is None:
+        if local_exists:
+            run("git", "switch", args.branch, cwd=path)
+        else:
+            run("git", "switch", "--track", "-c", args.branch, f"{remote}/{args.branch}", cwd=path)
+    else:
+        if local_exists:
+            run("git", "worktree", "add", str(path), args.branch, cwd=repo)
+        else:
+            run("git", "worktree", "add", "--track", "-b", args.branch, str(path),
+                f"{remote}/{args.branch}", cwd=repo)
+
+    emit(
+        {
+            "action": "attach",
+            "branch": args.branch,
+            "base": base,
+            "base_sha": base_sha,
+            "path": str(path),
+            "slot": slot,
+            "sync": sync,
         },
         args.json,
     )
@@ -198,7 +273,7 @@ def parser() -> argparse.ArgumentParser:
     result = argparse.ArgumentParser(description=__doc__)
     sub = result.add_subparsers(dest="action", required=True)
 
-    start_parser = sub.add_parser("start", help="create or reuse a task worktree")
+    start_parser = sub.add_parser("start", help="create a new task branch and worktree")
     start_parser.add_argument("branch")
     start_parser.add_argument("--base", help="explicit base branch; defaults to newest remote dev/vX.Y.Z")
     start_parser.add_argument("--remote", default="origin")
@@ -206,6 +281,15 @@ def parser() -> argparse.ArgumentParser:
     start_parser.add_argument("--slot", help="reusable slot name, such as task-01")
     start_parser.add_argument("--json", action="store_true")
     start_parser.set_defaults(handler=start)
+
+    attach_parser = sub.add_parser("attach", help="attach an existing local or remote branch to a worktree")
+    attach_parser.add_argument("branch")
+    attach_parser.add_argument("--base", help="explicit base branch; defaults to newest remote dev/vX.Y.Z")
+    attach_parser.add_argument("--remote", default="origin")
+    attach_parser.add_argument("--root", help="worktree root directory")
+    attach_parser.add_argument("--slot", help="reusable slot name, such as task-01")
+    attach_parser.add_argument("--json", action="store_true")
+    attach_parser.set_defaults(handler=attach)
 
     close_parser = sub.add_parser("close", help="close a merged task and release its worktree slot")
     close_parser.add_argument("--slot", required=True)
