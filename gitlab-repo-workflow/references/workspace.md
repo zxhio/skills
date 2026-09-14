@@ -22,7 +22,7 @@
 gitlab-repo-workflow/scripts/workspace.py start <topic-branch> --json
 ```
 
-脚本会同步 origin、选择最新合法的 `origin/dev/vX.Y.Z` 基线，并返回：
+脚本会同步 origin、选择 `origin/dev` 基线，并返回：
 
 - 需求分支；
 - 基线和 Base SHA；
@@ -45,7 +45,7 @@ gitlab-repo-workflow/scripts/workspace.py attach <topic-branch> --json
 
 ## 占用与恢复
 
-活动 brief 或简单任务独占其 worktree；简单任务以需求分支和 slot 作为执行记录。新的任务使用干净的空闲 slot。有效提交分支是需求分支，`main`、`dev/*` 和 `release/*` 承担控制分支职责。继续计划时，从 brief 或当前任务记录的 worktree 恢复。
+活动 brief 或简单任务独占其 worktree；简单任务以需求分支和 slot 作为执行记录。新的任务使用干净的空闲 slot。有效提交分支是需求分支，`main`、`dev`、`dev/*`（过渡期遗留版本线）和 `release/*` 承担控制分支职责。继续计划时，从 brief 或当前任务记录的 worktree 恢复。
 
 MR 合并后，使用 brief 或当前任务记录的 slot 执行：
 

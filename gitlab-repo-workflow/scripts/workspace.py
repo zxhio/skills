@@ -6,15 +6,13 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import re
 import subprocess
 import sys
 from pathlib import Path
 
 
-DEV_BRANCH = re.compile(r"^dev/v(\d+)\.(\d+)\.(\d+)$")
 PROTECTED_PREFIXES = ("dev/", "release/")
-PROTECTED_NAMES = {"main", "master"}
+PROTECTED_NAMES = {"main", "master", "dev"}
 
 
 class WorkspaceError(RuntimeError):
@@ -77,22 +75,10 @@ def clean(path: Path) -> bool:
     return not run("git", "status", "--porcelain", "--untracked-files=all", cwd=path)
 
 
-def latest_dev(repo: Path, remote: str) -> str:
-    refs = run(
-        "git",
-        "for-each-ref",
-        "--format=%(refname:short)",
-        f"refs/remotes/{remote}/dev/v*",
-        cwd=repo,
-    ).splitlines()
-    versions = []
-    for ref in refs:
-        match = DEV_BRANCH.fullmatch(ref.removeprefix(f"{remote}/"))
-        if match:
-            versions.append((tuple(int(value) for value in match.groups()), ref))
-    if not versions:
-        raise WorkspaceError(f"no valid {remote}/dev/vX.Y.Z branch found")
-    return max(versions)[1]
+def default_base(repo: Path, remote: str) -> str:
+    if not ref_exists(repo, f"refs/remotes/{remote}/dev"):
+        raise WorkspaceError(f"no {remote}/dev branch found")
+    return f"{remote}/dev"
 
 
 def validate_topic(branch: str) -> None:
@@ -143,10 +129,10 @@ def start(args: argparse.Namespace) -> None:
     validate_topic(args.branch)
     remote = args.remote
     run("git", "fetch", remote, "--prune", cwd=repo)
-    base = args.base or latest_dev(repo, remote)
+    base = args.base or default_base(repo, remote)
     current_branch = run("git", "branch", "--show-current", cwd=repo)
     if args.base and args.base.removeprefix(f"{remote}/") == current_branch:
-        raise WorkspaceError("base cannot be the current task branch; choose a dev/vX.Y.Z branch")
+        raise WorkspaceError("base cannot be the current task branch; choose the dev integration branch")
     base_sha = run("git", "rev-parse", base, cwd=repo)
 
     if ref_exists(repo, f"refs/heads/{args.branch}"):
@@ -210,7 +196,7 @@ def attach(args: argparse.Namespace) -> None:
     elif remote_exists:
         sync = "remote-only"
 
-    base = args.base or latest_dev(repo, remote)
+    base = args.base or default_base(repo, remote)
     branch_ref = args.branch if local_exists else f"{remote}/{args.branch}"
     base_sha = run("git", "merge-base", base, branch_ref, cwd=repo)
 
@@ -275,7 +261,7 @@ def parser() -> argparse.ArgumentParser:
 
     start_parser = sub.add_parser("start", help="create a new task branch and worktree")
     start_parser.add_argument("branch")
-    start_parser.add_argument("--base", help="explicit base branch; defaults to newest remote dev/vX.Y.Z")
+    start_parser.add_argument("--base", help="explicit base branch; defaults to remote dev")
     start_parser.add_argument("--remote", default="origin")
     start_parser.add_argument("--root", help="worktree root directory")
     start_parser.add_argument("--slot", help="reusable slot name, such as task-01")
@@ -284,7 +270,7 @@ def parser() -> argparse.ArgumentParser:
 
     attach_parser = sub.add_parser("attach", help="attach an existing local or remote branch to a worktree")
     attach_parser.add_argument("branch")
-    attach_parser.add_argument("--base", help="explicit base branch; defaults to newest remote dev/vX.Y.Z")
+    attach_parser.add_argument("--base", help="explicit base branch; defaults to remote dev")
     attach_parser.add_argument("--remote", default="origin")
     attach_parser.add_argument("--root", help="worktree root directory")
     attach_parser.add_argument("--slot", help="reusable slot name, such as task-01")
