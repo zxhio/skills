@@ -19,7 +19,7 @@ brief 是复杂计划的 task、review、验收和交付状态记录。简单任
 ```
 
 - `repo` 使用主 checkout 的仓库名；同名仓库追加 origin 项目路径。
-- `line` 使用 `main`、`dev` 或 `release/<ver>`。
+- `line` 使用任务实际目标分支的完整名称，例如 `dev/v0.2.0`、`develop` 或 `main`；选择规则见 [`workspace.md`](workspace.md#合入线)。
 - `topic` 使用完整需求分支路径；合入线上的维护任务可以省略。
 - 日期使用 `YYYYMMDD`，goal slug 使用稳定的小写短横线文本。
 
@@ -31,6 +31,7 @@ brief 是复杂计划的 task、review、验收和交付状态记录。简单任
 # <Goal title>
 
 - Repo: `<repo>`
+- Remote: `<remote>`
 - Line: `<line>`
 - Branch: `<working-branch>`
 - Task: `<task-id>`
