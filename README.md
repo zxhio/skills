@@ -31,3 +31,11 @@ Drive GitLab repository tasks end to end: plan the goal, create or attach a task
 MR 合并后自动关闭计划、删除本地需求分支并释放 worktree。
 
 See [gitlab-repo-workflow/SKILL.md](gitlab-repo-workflow/SKILL.md).
+
+## workflow
+
+独立使用 `spec:plan`、`task:plan`、`task:run`、`deploy:run`，完成方案设计、任务规划与执行、提交及部署。
+
+方案按日期和主题独立保存，任务记录沿用仓库、合入线及分支层级。存储位置通过 `spec_dir` 和 `task_dir` 配置。
+
+See [workflow/SKILL.md](workflow/SKILL.md).
